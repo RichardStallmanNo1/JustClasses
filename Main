@@ -1,0 +1,51 @@
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+
+public class RecievePacketsSrc
+{
+  public static ArrayList<Channel> ChannelArray = new ArrayList(0);
+  public static DateFormat df = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
+  
+  public static void ChannelSetup()
+  {
+    Channel GeneralChannel = new Channel();
+    Channel MusicChannel = new Channel();
+    Channel TechChannel = new Channel();
+    Channel SchoolChannel = new Channel();
+    Channel PoliticsChannel = new Channel();
+    GeneralChannel.name = "General";
+    GeneralChannel.message = new ArrayList(0);
+    ChannelArray.add(GeneralChannel);
+    MusicChannel.name = "Music";
+    MusicChannel.message = new ArrayList(0);
+    ChannelArray.add(MusicChannel);
+    TechChannel.name = "Music";
+    TechChannel.message = new ArrayList(0);
+    ChannelArray.add(TechChannel);
+    SchoolChannel.name = "Music";
+    SchoolChannel.message = new ArrayList(0);
+    ChannelArray.add(SchoolChannel);
+    PoliticsChannel.name = "Music";
+    PoliticsChannel.message = new ArrayList(0);
+    ChannelArray.add(PoliticsChannel);
+  }
+  
+  public static void main(String[] args)
+    throws IOException
+  {
+    ChannelSetup();
+    
+    ServerSocket sock = new ServerSocket(7777);
+    Socket newsock = null;
+    for (;;)
+    {
+      newsock = sock.accept();
+      
+      new ClientThread(newsock).start();
+    }
+  }
+}
