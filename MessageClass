@@ -1,0 +1,9 @@
+class Message
+{
+  public double latitude;
+  public double longitude;
+  public long date;
+  public String msgString;
+  public String channel;
+}
+//used in the main file, basically a cpp struct
