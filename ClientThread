@@ -1,0 +1,126 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.text.DateFormat;
+import java.util.ArrayList;
+import java.util.List;
+import org.json.JSONObject;
+
+public class ClientThread
+  extends Thread
+{
+  protected Socket socket;
+  public static BufferedReader br = null;
+  public static PrintWriter out = null;
+  public static String fullJSONLine = "";
+  public static int channel;
+  
+  public ClientThread(Socket clientSocket)
+  {
+    this.socket = clientSocket;
+  }
+  
+  public void ifLocationGood(JSONObject json)
+  {
+    double rvaLat = 37.5407D;
+    double chLat = 0.145544D;
+    double rvaLong = 77.436D;
+    double chLong = 0.144592D;
+    if ((Double.parseDouble(json.getString("latitude")) > rvaLat + chLat) || (Double.parseDouble(json.getString("latitude")) < rvaLat - chLat)) {
+      currentThread().destroy();
+    } else if ((Double.parseDouble(json.getString("longitude")) > rvaLong + chLong) || (Double.parseDouble(json.getString("longitude")) < rvaLat - chLong)) {
+      currentThread().destroy();
+    }
+  }
+  
+  public void sendPins()
+  {
+    JSONObject allPins = new JSONObject();
+    int totalPins = 0;
+    for (int i = 1; i < 5; i++) {
+      if (((Channel)RecievePacketsSrc.ChannelArray.get(i)).message.size() > 0) {
+        for (int x = 0; x < ((Channel)RecievePacketsSrc.ChannelArray.get(i)).message.size(); x++)
+        {
+          String totalconcat = String.valueOf(x).concat(((Message)((Channel)RecievePacketsSrc.ChannelArray.get(i)).message.get(x)).channel);
+          allPins.put("Channel".concat(totalconcat), ((Message)((Channel)RecievePacketsSrc.ChannelArray.get(i)).message.get(x)).channel);
+          allPins.put("index".concat(totalconcat), String.valueOf(x));
+          allPins.put("latitude".concat(totalconcat), ((Message)((Channel)RecievePacketsSrc.ChannelArray.get(i)).message.get(x)).latitude);
+          allPins.put("longitude".concat(totalconcat), ((Message)((Channel)RecievePacketsSrc.ChannelArray.get(i)).message.get(x)).longitude);
+          totalPins++;
+        }
+      }
+    }
+    allPins.put("totalPins", totalPins);
+    out.println(allPins.toString());
+  }
+  
+  public void sendSpecificPin(JSONObject json)
+  {
+    String chann = json.getString("Channel");
+    int channel = 0;
+    for (int i = 0; i < 5; i++) {
+      if (((Channel)RecievePacketsSrc.ChannelArray.get(i)).name.equals(chann))
+      {
+        channel = i;
+        break;
+      }
+    }
+    int index = Integer.parseInt(json.getString("index"));
+    
+    JSONObject pinSend = new JSONObject();
+    pinSend.put("pinMessage", ((Message)((Channel)RecievePacketsSrc.ChannelArray.get(channel)).message.get(index)).msgString);
+    pinSend.put("date", RecievePacketsSrc.df.format(Long.valueOf(((Message)((Channel)RecievePacketsSrc.ChannelArray.get(channel)).message.get(index)).date)));
+    
+    out.println(pinSend.toString());
+  }
+  
+  public void recieveMessages(JSONObject json)
+  {
+    Message userMessage = new Message();
+    
+    userMessage.latitude = Double.parseDouble(json.getString("latitude"));
+    userMessage.longitude = Double.parseDouble(json.getString("longitude"));
+    userMessage.date = Long.parseLong(json.getString("date"));
+    userMessage.msgString = json.getString("userMessage");
+    userMessage.channel = json.getString("channel");
+    channel = 0;
+    for (int i = 0; i < 5; i++) {
+      if (((Channel)RecievePacketsSrc.ChannelArray.get(i)).name.equals(userMessage.channel))
+      {
+        channel = i;
+        break;
+      }
+    }
+    ((Channel)RecievePacketsSrc.ChannelArray.get(channel)).message.add(userMessage);
+  }
+  
+  public void run()
+  {
+    try
+    {
+      br = new BufferedReader(new InputStreamReader(this.socket.getInputStream()));
+      out = new PrintWriter(this.socket.getOutputStream(), true);
+      fullJSONLine = br.readLine();
+    }
+    catch (Exception e)
+    {
+      System.out.print("Failed here...");
+    }
+    JSONObject json = new JSONObject(fullJSONLine);
+    if (json.getString("sendReq").equals("userSendMsg"))
+    {
+      recieveMessages(json);
+    }
+    else if (json.getString("sendReq").equals("initialLoc"))
+    {
+      ifLocationGood(json);
+      sendPins();
+    }
+    else if (json.getString("sendReq").equals("pinRequest"))
+    {
+      sendSpecificPin(json);
+    }
+  }
+}
