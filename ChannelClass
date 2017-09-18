@@ -1,0 +1,8 @@
+import java.util.List;
+
+class Channel
+{
+  public String name;
+  public List<Message> message;
+}
+//Used in Main, basically a cpp struct in java
